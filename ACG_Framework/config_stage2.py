@@ -34,13 +34,13 @@ class config:
    anchors_mask_yolo = [[6, 7, 8], [3, 4, 5], [0, 1, 2]]
    phi = 'l'
    backbone_yolo = 'cspdarknet'
-   model_path_yolo = f"{model_weight_path}/yolo-ep100-loss0.041-val_loss0.039.pth"  # "/root/autodl-tmp/dachuang/adv_detect/adv_em/model_data/50_0.9690_ep015.pth"
+   model_path_yolo = f"{model_weight_path}/yolo-ep100-loss0.041-val_loss0.039.pth"  
 
-   model_path_frcnn = f"{model_weight_path}/frcnn101-ep100-loss0.667-val_loss0.617.pth" # "/root/autodl-tmp/dachuang/adv_detect/adv_em/model_data/frcnn_101_0.9658_ep070.pth" # 
+   model_path_frcnn = f"{model_weight_path}/frcnn101-ep100-loss0.667-val_loss0.617.pth"  
    anchors_size_frcnn = [4, 16, 32]
    backbone_frcnn = 'resnet101'
    
-   model_path_ssd = f"{model_weight_path}/ssd_mb2_0.9802_ep100.pth"  # "/root/autodl-tmp/dachuang/adv_detect/adv_em/model_data/ssd_vgg_0.9819_ep090.pth"
+   model_path_ssd = f"{model_weight_path}/ssd_mb2_0.9802_ep100.pth"  
    anchors_size_ssd    = [30, 60, 111, 162, 213, 264, 315]
    backbone_ssd = 'mb2'
 
