@@ -2,7 +2,7 @@ import torch
 import numpy as np
 import random
 
-from config import config as conf
+from config_stage2 import config as conf
 
 def clip_by_value(x, x_min, x_max):
     x = x * (x <= x_max).type(torch.FloatTensor).to(conf.device) + x_max * (x > x_max).type(torch.FloatTensor).to(conf.device)

@@ -108,7 +108,7 @@ def get_detect_result(model, scheme, dirname, bbox_util, img_filename, img_path)
     image = Image.open(img_path)
     results_save_path = os.path.join(conf.output_path, f"{scheme}_{dirname}_{model_name}_{backbone}")
     if not os.path.exists(results_save_path):
-        os.mkdir(results_save_path)
+        os.makedirs(results_save_path)
     f = open(os.path.join(results_save_path, img_filename.replace('.png', '.txt')), "w", encoding='utf-8')
 
     image_shape = np.array(np.shape(image)[0:2])
@@ -175,9 +175,9 @@ def get_detect_result(model, scheme, dirname, bbox_util, img_filename, img_path)
 def get_ground_truth(scheme):
     print("Get ground truth result of " + scheme)
     ground_truth_path = os.path.join(conf.output_path, 'ground_truth')
-    scheme_ground_truth_path = os.path.join(ground_truth_path, 'scheme')
+    scheme_ground_truth_path = os.path.join(ground_truth_path, scheme)
     if not os.path.exists(scheme_ground_truth_path):
-        os.mkdir(scheme_ground_truth_path)
+        os.makedirs(scheme_ground_truth_path)
 
     scheme_path = os.path.join(conf.dataset_path, scheme)
     scheme_label_path = os.path.join(scheme_path, 'test_captcha_label')
@@ -186,28 +186,27 @@ def get_ground_truth(scheme):
     for json_filename in json_ids:
         with open(os.path.join(scheme_label_path, json_filename), 'r') as f:
             label_json = json.load(f)
-
-        for s in label_json['shapes']:
-            # left top right bottom
-            b0, b1, b2, b3 = int(s['points'][0][0]), int(s['points'][0][1]), int(s['points'][1][0]), int(s['points'][1][1])
-            if b3 < b1:
-                tmp = b1
-                b1 = b3
-                b3 = tmp
-            if b2 < b0:
-                tmp = b0
-                b0 = b2
-                b2 = tmp
+        with open(os.path.join(scheme_ground_truth_path, json_filename.replace('.json', '.txt')), "w") as save_f:
+            for s in label_json['shapes']:
+                # left top right bottom
+                b0, b1, b2, b3 = int(s['points'][0][0]), int(s['points'][0][1]), int(s['points'][1][0]), int(s['points'][1][1])
+                if b3 < b1:
+                    tmp = b1
+                    b1 = b3
+                    b3 = tmp
+                if b2 < b0:
+                    tmp = b0
+                    b0 = b2
+                    b2 = tmp
             
-            with open(os.path.join(scheme_ground_truth_path, json_filename.replace('.json', '.txt')), "w") as save_f:
                 save_f.write("%s %s %s %s %s\n" % ('char', b0, b1, b2, b3))
     print("Done.")
 
 
-def get_DSR(scheme, dirname, MINOVERLAP=0.5, score_threhold=0.5, path='/root/autodl-tmp/dachuang/数据集'):
+def get_DSR(scheme, dirname, MINOVERLAP=0.5, score_threhold=0.5):
 
     ground_truth_path = os.path.join(conf.output_path, 'ground_truth')
-    scheme_ground_truth_path = os.path.join(ground_truth_path, 'scheme')
+    scheme_ground_truth_path = os.path.join(ground_truth_path, scheme)
     detect_results_path = os.path.join(conf.output_path, f"{scheme}_{dirname}_{model_name}_{backbone}")
 
     detect_results_filename_list = os.listdir(detect_results_path)

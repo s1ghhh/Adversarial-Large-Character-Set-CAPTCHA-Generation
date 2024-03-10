@@ -7,7 +7,7 @@ import torch.nn as nn
 from torch.nn.functional import conv2d
 from torchvision import transforms
 
-from config import config as conf
+from config_stage1 import config as conf
 
 class GradCamModel(torch.nn.Module):
     def __init__(self, model):

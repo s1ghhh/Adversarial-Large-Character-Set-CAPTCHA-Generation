@@ -1,0 +1,2 @@
+## For complete dataset and well-trained models
+To prevent the misuse of the CAPTCHA dataset and well-trained models, we will not release them here. Please contact `whzh.nc@scu.edu.cn` or `sunguoheng2k@gmail.com` to request the dataset and models.

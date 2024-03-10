@@ -22,7 +22,7 @@ from config_RSR_ASR import config as conf
 
 import sys
 sys.path.append(r"./Dataset_and_Model_Preparation/Model_Library_Building/attention")
-from model.attention_ocr import OCR
+from nets.attention_ocr import OCR
 from utils.tokenizer import Tokenizer
 
 
@@ -264,21 +264,22 @@ def Recognition_attention(scheme, CAP_dirname, metric=''):
 
 def attention_model(scheme):
     json_file=f"{conf.model_weight_path}/{scheme}/attention/config_infer.json"
-    if scheme == 'sougou' or scheme == 'renmin':
-        model_path = f"{conf.model_weight_path}/{scheme}/attention/new/logs/best_model.pth"
-    else:
-        model_path = f"{conf.model_weight_path}/{scheme}/attention/logs/best_model.pth"
+
+    model_path = f"{conf.model_weight_path}/{scheme}/attention/best_model.pth"
     f = open(json_file, encoding='utf-8')
     data = json.load(f)
-
 
     cnn_option = data["cnn_option"]
     cnn_backbone = data["cnn_backbone_model"][str(cnn_option)]  # list containing model, model_weight
 
-    with open(f'{conf.dataset_path}/cls_attention/attention_cls_' + scheme + '.txt', 'r', encoding='utf-8') as f:
-        cls = f.read()
+    with open(f'{conf.dataset_path}/{scheme}/class_to_idx.txt', 'r', encoding='utf-8') as f:
+        cls_lines = f.readlines()
+    cls_list = []
+    for l in cls_lines:
+        char_class, _ = l.strip('\n').split(' ')
+        cls_list.append(char_class)
 
-    tokenizer = Tokenizer(list(cls))
+    tokenizer = Tokenizer(cls_list)
 
     if scheme == 'sougou':
         model = OCR(122, 47, 512, tokenizer.n_token,

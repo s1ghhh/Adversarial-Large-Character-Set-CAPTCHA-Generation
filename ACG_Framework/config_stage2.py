@@ -19,32 +19,33 @@ class config:
 
    pretrained = False
 
-   dataset_path = ''
-   model_weight_path = ''
+   dataset_path = './CAPTCHA_examples'
+   reco_model_weight_path = './models/reco_model'
+   detect_model_weight_path = './models/detect_model'
 
    class2idx_path = f'{dataset_path}/{scheme}/class_to_idx.txt'
    input_img_path = f'{dataset_path}/{scheme}/JPEGImages_char_noised'
    clean_img_path = f'{dataset_path}/{scheme}/test_captcha'
    label_path = f'{dataset_path}/{scheme}/test_captcha_label'
-   save_path = f'{dataset_path}/{scheme}/test'
 
-   classes_path = f"{model_weight_path}/classes.txt"
+
+   classes_path = f"{detect_model_weight_path}/classes.txt"
 
    anchors_path_yolo = './Dataset_and_Model_Preparation/Model_Library_Building/yolov5/yolo_anchors.txt'
    anchors_mask_yolo = [[6, 7, 8], [3, 4, 5], [0, 1, 2]]
    phi = 'l'
    backbone_yolo = 'cspdarknet'
-   model_path_yolo = f"{model_weight_path}/yolo-ep100-loss0.041-val_loss0.039.pth"  
+   model_path_yolo = f"{detect_model_weight_path}/yolo-ep100-loss0.041-val_loss0.039.pth"  
 
-   model_path_frcnn = f"{model_weight_path}/frcnn101-ep100-loss0.667-val_loss0.617.pth"  
+   model_path_frcnn = f"{detect_model_weight_path}/frcnn101-ep100-loss0.667-val_loss0.617.pth"  
    anchors_size_frcnn = [4, 16, 32]
    backbone_frcnn = 'resnet101'
    
-   model_path_ssd = f"{model_weight_path}/ssd_mb2_0.9802_ep100.pth"  
+   model_path_ssd = f"{detect_model_weight_path}/ssd_mb2_0.9802_ep100.pth"  
    anchors_size_ssd    = [30, 60, 111, 162, 213, 264, 315]
    backbone_ssd = 'mb2'
 
-   model_path_IncResV2 = f"{model_weight_path}/{scheme}/IncResV2/final_model.pth"
+   model_path_IncResV2 = f"{reco_model_weight_path}/{scheme}/IncResV2/final_model.pth"
 
    AA = True
    max_eps = 25.5
@@ -60,3 +61,5 @@ class config:
    model_names = ['frcnn', 'yolov5', 'ssd', 'reco']
    gene_on_char = True
    break_point = 9999
+
+   save_path = f'{dataset_path}/{scheme}/{noise_mode}_{max_eps}'

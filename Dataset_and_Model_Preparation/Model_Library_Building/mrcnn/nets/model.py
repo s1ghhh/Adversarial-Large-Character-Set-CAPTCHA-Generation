@@ -24,10 +24,12 @@ import tensorflow.keras.layers as KL
 import tensorflow.keras.utils as KU
 from tensorflow.python.eager import context
 import tensorflow.keras.models as KM
+import cv2
+import time
 
-from mrcnn import utils
+from mrcnn.nets import utils
 import sys
-from mrcnn.parallel_model import ParallelModel
+from mrcnn.nets.parallel_model import ParallelModel
 
 # Requires TensorFlow 2.0+
 from distutils.version import LooseVersion
@@ -904,7 +906,7 @@ def rpn_graph(feature_map, anchors_per_location, anchor_stride):
 
 
 def build_rpn_model(anchor_stride, anchors_per_location, depth):
-    """Builds a Keras nets of the Region Proposal Network.
+    """Builds a Keras model of the Region Proposal Network.
     It wraps the RPN graph so it can be used multiple times with shared
     weights.
 
@@ -913,7 +915,7 @@ def build_rpn_model(anchor_stride, anchors_per_location, depth):
                    every pixel in the feature map), or 2 (every other pixel).
     depth: Depth of the backbone feature map.
 
-    Returns a Keras Model object. The nets outputs, when called, are:
+    Returns a Keras Model object. The model outputs, when called, are:
     rpn_class_logits: [batch, H * W * anchors_per_location, 2] Anchor classifier logits (before softmax)
     rpn_probs: [batch, H * W * anchors_per_location, 2] Anchor classifier probabilities.
     rpn_bbox: [batch, H * W * anchors_per_location, (dy, dx, log(dh), log(dw))] Deltas to be
@@ -1082,7 +1084,7 @@ def rpn_class_loss_graph(rpn_match, rpn_class_logits):
 def rpn_bbox_loss_graph(config, target_bbox, rpn_match, rpn_bbox):
     """Return the RPN bounding box loss graph.
 
-    config: the nets config object.
+    config: the model config object.
     target_bbox: [batch, max positive anchors, (dy, dx, log(dh), log(dw))].
         Uses 0 padding to fill in unsed bbox deltas.
     rpn_match: [batch, anchors, 1]. Anchor match type. 1=positive,
@@ -1119,7 +1121,7 @@ def mrcnn_class_loss_graph(target_class_ids, pred_class_logits,
         classes that are in the dataset of the image, and 0
         for classes that are not in the dataset.
     """
-    # During nets building, Keras calls this function with
+    # During model building, Keras calls this function with
     # target_class_ids of type float32. Unclear why. Cast it
     # to int to get around it.
     target_class_ids = tf.cast(target_class_ids, 'int64')
@@ -1653,7 +1655,7 @@ class DataGenerator(KU.Sequence):
         when multiprocessing=True.
 
         dataset: The Dataset object to pick data from
-        config: The nets config object
+        config: The model config object
         shuffle: If True, shuffles the samples before every epoch
         augmentation: Optional. An imgaug (https://github.com/aleju/imgaug) augmentation.
             For example, passing imgaug.augmenters.Fliplr(0.5) flips images
@@ -1821,9 +1823,9 @@ class DataGenerator(KU.Sequence):
 ############################################################
 
 class MaskRCNN(object):
-    """Encapsulates the Mask RCNN nets functionality.
+    """Encapsulates the Mask RCNN model functionality.
 
-    The actual Keras nets is in the keras_model property.
+    The actual Keras model is in the keras_model property.
     """
 
     def __init__(self, mode, config, model_dir):
@@ -1843,7 +1845,7 @@ class MaskRCNN(object):
         """Build Mask R-CNN architecture.
             input_shape: The shape of the input image.
             mode: Either "training" or "inference". The inputs and
-                outputs of the nets differ accordingly.
+                outputs of the model differ accordingly.
         """
         assert mode in ['training', 'inference']
 
@@ -2067,7 +2069,7 @@ class MaskRCNN(object):
             #                                   config.NUM_CLASSES,
             #                                   train_bn=config.TRAIN_BN)
 
-            # nets = KM.Model([input_image, input_image_meta, input_anchors],
+            # model = KM.Model([input_image, input_image_meta, input_anchors],
             #                  [detections, mrcnn_class, mrcnn_bbox,
             #                      mrcnn_mask, rpn_rois, rpn_class, rpn_bbox],
             #                  name='mask_rcnn')
@@ -2083,12 +2085,12 @@ class MaskRCNN(object):
         return model
 
     def find_last(self):
-        """Finds the last checkpoint file of the last trained nets in the
-        nets directory.
+        """Finds the last checkpoint file of the last trained model in the
+        model directory.
         Returns:
             The path of the last checkpoint file
         """
-        # Get directory names. Each directory corresponds to a nets
+        # Get directory names. Each directory corresponds to a model
         dir_names = next(os.walk(self.model_dir))[1]
         key = self.config.NAME.lower()
         dir_names = filter(lambda f: f.startswith(key), dir_names)
@@ -2097,7 +2099,7 @@ class MaskRCNN(object):
             import errno
             raise FileNotFoundError(
                 errno.ENOENT,
-                "Could not find nets directory under {}".format(self.model_dir))
+                "Could not find model directory under {}".format(self.model_dir))
         # Pick last directory
         dir_name = os.path.join(self.model_dir, dir_names[-1])
         # Find the last checkpoint
@@ -2134,8 +2136,8 @@ class MaskRCNN(object):
             if 'layer_names' not in f.attrs and 'model_weights' in f:
                 f = f['model_weights']
 
-            # In multi-GPU training, we wrap the nets. Get layers
-            # of the inner nets because they have the weights.
+            # In multi-GPU training, we wrap the model. Get layers
+            # of the inner model because they have the weights.
             keras_model = self.keras_model
             layers = keras_model.inner_model.layers if hasattr(keras_model, "inner_model")\
                 else keras_model.layers
@@ -2167,7 +2169,7 @@ class MaskRCNN(object):
         return weights_path
 
     def compile(self, learning_rate, momentum):
-        """Gets the nets ready for training. Adds losses, regularization, and
+        """Gets the model ready for training. Adds losses, regularization, and
         metrics. Then calls the Keras compile() function.
         """
         # Optimizer object
@@ -2212,7 +2214,7 @@ class MaskRCNN(object):
             self.keras_model.add_metric(loss, name=name, aggregation='mean')
 
     def set_trainable(self, layer_regex, keras_model=None, indent=0, verbose=1):
-        """Sets nets layers as trainable if their names match
+        """Sets model layers as trainable if their names match
         the given regular expression.
         """
         # Print message on the first call (but not on recursive calls)
@@ -2221,15 +2223,15 @@ class MaskRCNN(object):
 
         keras_model = keras_model or self.keras_model
 
-        # In multi-GPU training, we wrap the nets. Get layers
-        # of the inner nets because they have the weights.
+        # In multi-GPU training, we wrap the model. Get layers
+        # of the inner model because they have the weights.
         layers = keras_model.inner_model.layers if hasattr(keras_model, "inner_model")\
             else keras_model.layers
 
         for layer in layers:
-            # Is the layer a nets?
+            # Is the layer a model?
             if layer.__class__.__name__ == 'Model':
-                print("In nets: ", layer.name)
+                print("In model: ", layer.name)
                 self.set_trainable(
                     layer_regex, keras_model=layer, indent=indent + 4)
                 continue
@@ -2239,7 +2241,7 @@ class MaskRCNN(object):
             # Is it trainable?
             trainable = bool(re.fullmatch(layer_regex, layer.name))
             # model_remove中，直接将mask部分去除了，所以以下操作无用
-            # 如果layer_regex == r'(nets\_.*)'，则表明我们要冻结mrcnn层，因此要取反，表示只将mrcnn冻结
+            # 如果layer_regex == r'(mrcnn\_.*)'，则表明我们要冻结mrcnn层，因此要取反，表示只将mrcnn冻结
             if layer_regex == r'(mrcnn_mask\_.*)':
                 trainable = bool(1 - trainable)
             # Update layer. If layer is a container, update inner layer.
@@ -2253,21 +2255,21 @@ class MaskRCNN(object):
                                             layer.__class__.__name__))
 
     def set_log_dir(self, model_path=None):
-        """Sets the nets log directory and epoch counter.
+        """Sets the model log directory and epoch counter.
 
         model_path: If None, or a format different from what this code uses
             then set a new log directory and start epochs from 0. Otherwise,
             extract the log directory and the epoch counter from the file
             name.
         """
-        # Set date and epoch counter as if starting a new nets
+        # Set date and epoch counter as if starting a new model
         self.epoch = 0
         now = datetime.datetime.now()
 
-        # If we have a nets path with date and epochs use them
+        # If we have a model path with date and epochs use them
         if model_path:
             # Continue from we left of. Get epoch and date from the file name
-            # A sample nets path might look like:
+            # A sample model path might look like:
             # \path\to\logs\coco20171029T2315\mask_rcnn_coco_0001.h5 (Windows)
             # /path/to/logs/coco20171029T2315/mask_rcnn_coco_0001.h5 (Linux)
             regex = r".*[/\\][\w-]+(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})[/\\]mask\_rcnn\_[\w-]+(\d{4})\.h5"
@@ -2293,7 +2295,7 @@ class MaskRCNN(object):
 
     def train(self, train_dataset, val_dataset, learning_rate, epochs, layers,
               augmentation=None, custom_callbacks=None, no_augmentation_sources=None):
-        """Train the nets.
+        """Train the model.
         train_dataset, val_dataset: Training and validation Dataset objects.
         learning_rate: The learning rate to train with
         epochs: Number of training epochs. Note that previous training epochs
@@ -2325,16 +2327,16 @@ class MaskRCNN(object):
             augmentation. A source is string that identifies a dataset and is
             defined in the Dataset class.
         """
-        assert self.mode == "training", "Create nets in training mode."
+        assert self.mode == "training", "Create model in training mode."
 
         # Pre-defined layer regular expressions
         layer_regex = {
             # all layers but the backbone
-            "heads": r"(nets\_.*)|(rpn\_.*)|(fpn\_.*)",
+            "heads": r"(mrcnn\_.*)|(rpn\_.*)|(fpn\_.*)",
             # From a specific Resnet stage and up
-            "3+": r"(res3.*)|(bn3.*)|(res4.*)|(bn4.*)|(res5.*)|(bn5.*)|(nets\_.*)|(rpn\_.*)|(fpn\_.*)",
-            "4+": r"(res4.*)|(bn4.*)|(res5.*)|(bn5.*)|(nets\_.*)|(rpn\_.*)|(fpn\_.*)",
-            "5+": r"(res5.*)|(bn5.*)|(nets\_.*)|(rpn\_.*)|(fpn\_.*)",
+            "3+": r"(res3.*)|(bn3.*)|(res4.*)|(bn4.*)|(res5.*)|(bn5.*)|(mrcnn\_.*)|(rpn\_.*)|(fpn\_.*)",
+            "4+": r"(res4.*)|(bn4.*)|(res5.*)|(bn5.*)|(mrcnn\_.*)|(rpn\_.*)|(fpn\_.*)",
+            "5+": r"(res5.*)|(bn5.*)|(mrcnn\_.*)|(rpn\_.*)|(fpn\_.*)",
             # All layers
             "all": ".*",
             "frcnn": r"(mrcnn_mask\_.*)",
@@ -2430,7 +2432,7 @@ class MaskRCNN(object):
         windows = np.stack(windows)
         return molded_images, image_metas, windows
 
-    def unmold_detections(self, detections, mrcnn_mask, original_image_shape,
+    def unmold_detections(self, detections, original_image_shape,
                           image_shape, window):
         """Reformats the detections of one image from the format of the neural
         network output to a format suitable for use in the rest of the
@@ -2458,7 +2460,7 @@ class MaskRCNN(object):
         boxes = detections[:N, :4]
         class_ids = detections[:N, 4].astype(np.int32)
         scores = detections[:N, 5]
-        masks = mrcnn_mask[np.arange(N), :, :, class_ids]
+        # masks = mrcnn_mask[np.arange(N), :, :, class_ids]
 
         # Translate normalized coordinates in the resized image to pixel
         # coordinates in the original image before resizing
@@ -2481,19 +2483,19 @@ class MaskRCNN(object):
             boxes = np.delete(boxes, exclude_ix, axis=0)
             class_ids = np.delete(class_ids, exclude_ix, axis=0)
             scores = np.delete(scores, exclude_ix, axis=0)
-            masks = np.delete(masks, exclude_ix, axis=0)
+            # masks = np.delete(masks, exclude_ix, axis=0)
             N = class_ids.shape[0]
 
         # Resize masks to original image size and set boundary threshold.
-        full_masks = []
-        for i in range(N):
-            # Convert neural network mask to full size mask
-            full_mask = utils.unmold_mask(masks[i], boxes[i], original_image_shape)
-            full_masks.append(full_mask)
-        full_masks = np.stack(full_masks, axis=-1)\
-            if full_masks else np.empty(original_image_shape[:2] + (0,))
+        # full_masks = []
+        # for i in range(N):
+        #     # Convert neural network mask to full size mask
+        #     full_mask = utils.unmold_mask(masks[i], boxes[i], original_image_shape)
+        #     full_masks.append(full_mask)
+        # full_masks = np.stack(full_masks, axis=-1)\
+        #     if full_masks else np.empty(original_image_shape[:2] + (0,))
 
-        return boxes, class_ids, scores, full_masks
+        return boxes, class_ids, scores
 
     def detect(self, images, verbose=0):
         """Runs the detection pipeline.
@@ -2506,7 +2508,7 @@ class MaskRCNN(object):
         scores: [N] float probability scores for the class IDs
         masks: [H, W, N] instance binary masks
         """
-        assert self.mode == "inference", "Create nets in inference mode."
+        assert self.mode == "inference", "Create model in inference mode."
         assert len(
             images) == self.config.BATCH_SIZE, "len(images) must be equal to BATCH_SIZE"
 
@@ -2536,27 +2538,56 @@ class MaskRCNN(object):
             log("image_metas", image_metas)
             log("anchors", anchors)
         # Run object detection
-        detections, _, _, mrcnn_mask, _, _, _ =\
+        # detections, _, _, mrcnn_mask, _, _, _ =\
+        #     self.keras_model.predict([molded_images, image_metas, anchors], verbose=0)
+        detections, _, _, _, _, _ =\
             self.keras_model.predict([molded_images, image_metas, anchors], verbose=0)
         # Process detections
         results = []
         for i, image in enumerate(images):
-            final_rois, final_class_ids, final_scores, final_masks =\
-                self.unmold_detections(detections[i], mrcnn_mask[i],
+            final_rois, final_class_ids, final_scores =\
+                self.unmold_detections(detections[i],
                                        image.shape, molded_images[i].shape,
                                        windows[i])
             results.append({
                 "rois": final_rois,
                 "class_ids": final_class_ids,
                 "scores": final_scores,
-                "masks": final_masks,
             })
         return results
 
+    def get_map_txt(self, image_id, image_path, class_names, map_out_path):
+        f = open(os.path.join(map_out_path, "detection-results/" + image_id + ".txt"), "w")
+        # f = open(os.path.join(map_out_path, "./" + image_id + ".txt"), "w")
+
+        image = cv2.imread(image_path)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        start = time.perf_counter()
+        r = self.detect([image])
+        r = r[0]
+        
+        top_label = np.array(r['class_ids'])
+        top_conf = r['scores']
+        top_boxes = r['rois']
+        end = time.perf_counter()
+        for i, c in list(enumerate(top_label)):
+            predicted_class = str(c)
+            box = top_boxes[i]
+            score = str(top_conf[i])
+
+            top, left, bottom, right = box
+            if predicted_class not in class_names:
+                continue
+
+            f.write("%s %s %s %s %s %s\n" % (
+                str(predicted_class), str(score), str(int(left)), str(int(top)), str(int(right)), str(int(bottom))))
+
+        f.close()
+        return end - start
     def detect_molded(self, molded_images, image_metas, verbose=0):
         """Runs the detection pipeline, but expect inputs that are
         molded already. Used mostly for debugging and inspecting
-        the nets.
+        the model.
 
         molded_images: List of images loaded using load_image_gt()
         image_metas: image meta data, also returned by load_image_gt()
@@ -2567,7 +2598,7 @@ class MaskRCNN(object):
         scores: [N] float probability scores for the class IDs
         masks: [H, W, N] instance binary masks
         """
-        assert self.mode == "inference", "Create nets in inference mode."
+        assert self.mode == "inference", "Create model in inference mode."
         assert len(molded_images) == self.config.BATCH_SIZE,\
             "Number of images must be equal to BATCH_SIZE"
 
@@ -2704,7 +2735,7 @@ class MaskRCNN(object):
 
         # Build a Keras function to run parts of the computation graph
         inputs = model.inputs
-        # if nets.uses_learning_phase and not isinstance(K.learning_phase(), int):
+        # if model.uses_learning_phase and not isinstance(K.learning_phase(), int):
         #     inputs += [K.learning_phase()]
         kf = K.function(model.inputs, list(outputs.values()))
 
@@ -2722,7 +2753,7 @@ class MaskRCNN(object):
         model_in = [molded_images, image_metas, anchors]
 
         # Run inference
-        # if nets.uses_learning_phase and not isinstance(K.learning_phase(), int):
+        # if model.uses_learning_phase and not isinstance(K.learning_phase(), int):
         #     model_in.append(0.)
         outputs_np = kf(model_in)
 
