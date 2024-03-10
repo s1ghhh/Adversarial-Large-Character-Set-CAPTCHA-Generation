@@ -16,7 +16,7 @@ Our code is composed of three parts:
 
    * The workflow is shown as follows,
 <div  align="center">  
-<img src="src/framework.pdf" width="80%"> 
+<img src="src/framework.png" width="80%"> 
 </div>
 
 2. `Adv_Eval Part` includes a toolkit for evaluating various CAPTCHAs, which can measure metrics such as DSR, RSR, ASR, and so on.
@@ -36,7 +36,7 @@ Our code is composed of three parts:
 We collected 10 types of CAPTCHA commonly used on the Chinese Internet: Yidun (dun.163.com), Shumei (ishumei.com), Baidu (pan.baidu.com), YY (yy.com), Dingxiang (dingxiang-inc.com), 58 (58.com), Geetest (geetest.com), Dajie (dajie.com), Renmin (people.com.cn), Sougou (sougou.com). Some examples are shown in the figure below.
 
 <div  align="center">  
-<img src="src/CAPTCHA_examples.pdf" width="80%"> 
+<img src="src/CAPTCHA_examples.png" width="80%"> 
 </div>
 
 
