@@ -72,7 +72,7 @@ def add_blur(img, box, blur):
 
 
 class generator(object):
-    # 初始化一下生成器的参数
+    # 初始化生成器的参数
     def __init__(self):
         self.colors = get_color(conf.color_path)  # 随机选择颜色
         self.background_height, self.background_width = conf.background_height, conf.background_width
@@ -134,32 +134,26 @@ class generator(object):
         max_size = self.char_size_range[-1]
         w, h = self.background_width, self.background_height
         # setup
-        # 在画布为1的位置选择一个点绘制字符
         location_non_zero = list(zip(x_non_zero, y_non_zero))
 
         x, y = random.choice(list(location_non_zero))
 
-        # 限定一些位置不能再有字符
         canvas[max(0, x - max_size): x + max_size, max(0, y - max_size): y + max_size] = 0
 
-        # 角度
         angle = random.randint(-self.max_angle, self.max_angle)
-        # 两层颜色
+
         color_out = random.choice(self.colors)
         # color_in = (0,0,0,0)
         color_in = random.choice(self.colors)
         # color_out = random.c
         # hoice(self.colors)
         # color_in = random.choice(self.colors)
-        # 字体
-
-        # 字符大小 两层
 
         size = random.choice(self.char_size_range)
 
 
 
-        # 随机选择一个过滤器
+
         blur = random.choice(self.blur)
 
         x1 = max(0, x - 3 - random.randint(0, 3))
@@ -179,7 +173,6 @@ class generator(object):
             img = img.resize((w, h))
 
         im0 = Image.new(mode='RGBA', size=(w, h), color=(0, 0, 0, 0))
-        #空心字符处理s1gh
         font = random.choice(self.fonts)
 
         ft = ImageFont.truetype(font, size)
@@ -206,7 +199,7 @@ class generator(object):
         canvas[canvas.shape[0] - 55 - 4 -40:canvas.shape[0] - 55 - 4, canvas.shape[1] - 55 - 4 - 40:canvas.shape[1] - 55 - 4] = 0
         # canvas[8:canvas.shape[0] - self.char_size_range[-1] -20, 8:canvas.shape[1] - self.char_size_range[-1] -20] = 1
         # canvas[20:canvas.shape[0] -self.char_size_range[-1], canvas.shape[1] - 20:canvas.shape[1] - self.char_size_range[-1]] = 1
-        # # 极验的底部没有字
+        # 极验的底部没有字
         # canvas[0:canvas.shape[0], 300: canvas.shape[1]] = 0
         boxes = []
         chars = []
